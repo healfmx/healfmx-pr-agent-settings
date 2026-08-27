@@ -13,11 +13,14 @@
 model = "anthropic/claude-sonnet-5"
 fallback_models = ["anthropic/claude-haiku-4-5"]
 
-# Trims the default 3-command bundle (/describe, /review, /improve) down to
-# just /review. Each command is a separate model call — /describe and
-# /improve add cost without adding review value for this use case. Add them
-# back individually if the team wants them later.
-pr_commands = ["/review"]
+# Trims the default 3-command bundle down to /review + /improve (drops
+# /describe only). /review flags security/logic issues and drives the
+# branch-protection gate (`possible security issue` label); /improve adds
+# inline, resolvable code-suggestion comments — /review alone can't do that,
+# it only posts one summary comment. Two model calls per PR instead of one;
+# at current volume (~81 PRs/mes) that's Sonnet 5 effort-high ~$464 MXN/mes
+# instead of ~$232 MXN/mes — approved, still trivial next to a seat-based tool.
+pr_commands = ["/review", "/improve"]
 
 # PR-Agent computes real per-run cost via litellm and can post it in the PR
 # comment. Use this instead of estimating — measure the pilot week, then
@@ -41,4 +44,4 @@ formatting or style already enforced by CI linters.
 [github_action_config]
 auto_review = true
 auto_describe = false
-auto_improve = false
+auto_improve = true
