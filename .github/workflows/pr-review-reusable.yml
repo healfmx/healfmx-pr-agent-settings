@@ -1,0 +1,66 @@
+name: PR Review (reusable)
+
+# Called by consuming repos via:
+#   uses: healfmx/healfmx-pr-agent-settings/.github/workflows/pr-review-reusable.yml@main
+#
+# Centralizes the PR-Agent config, model choice, and secret retrieval so
+# individual repos only need a thin caller workflow (see README.md).
+
+on:
+  workflow_call:
+    secrets:
+      OIDC_ROLE_ARN:
+        description: "ARN of the shared IAM role this workflow assumes via GitHub OIDC to read the Anthropic API key from AWS Secrets Manager."
+        required: true
+      ANTHROPIC_SECRET_ARN:
+        description: "ARN of the AWS Secrets Manager secret holding the Anthropic API key (JSON key: ANTHROPIC_API_KEY)."
+        required: true
+
+permissions: {}
+
+jobs:
+  pr-review:
+    # Release PRs (develop -> main) were already reviewed against develop in
+    # their original PRs; re-running the bundle here is a full model call
+    # that adds noise, not signal. Skip by branch name.
+    if: ${{ !startsWith(github.head_ref, 'release/') && github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required to assume the AWS OIDC role
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Assume AWS role via OIDC
+        # TODO: pin to a full commit SHA per this org's third-party-action
+        # policy before merging. Not pinned here because this session could
+        # not reach the GitHub API to verify the current release SHA.
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch Anthropic API key from Secrets Manager
+        env:
+          SECRET_ARN: ${{ secrets.ANTHROPIC_SECRET_ARN }}
+        run: |
+          set -euo pipefail
+          secret_value="$(aws secretsmanager get-secret-value --secret-id "$SECRET_ARN" --query SecretString --output text)"
+          api_key="$(echo "$secret_value" | jq -r '.ANTHROPIC_API_KEY')"
+          echo "::add-mask::$api_key"
+          echo "ANTHROPIC_API_KEY=$api_key" >> "$GITHUB_ENV"
+
+      - name: PR-Agent review
+        # TODO: pin to a full commit SHA per this org's third-party-action
+        # policy before merging (same caveat as above).
+        # TODO: verify `config.config_file` is the correct current env var
+        # for pointing PR-Agent at a remote .pr_agent.toml against the
+        # PR-Agent version actually pinned above — confirm against
+        # docs.pr-agent.ai before relying on this in production.
+        uses: The-PR-Agent/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ANTHROPIC_API_KEY: ${{ env.ANTHROPIC_API_KEY }}
+          # PR-Agent reads .pr_agent.toml from the *calling* repo's root by
+          # default; the config lives here instead, so point at it directly.
+          config.config_file: "https://raw.githubusercontent.com/healfmx/healfmx-pr-agent-settings/main/.pr_agent.toml"

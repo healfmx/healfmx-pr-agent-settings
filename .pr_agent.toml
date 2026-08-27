@@ -1,0 +1,44 @@
+# Centralized PR-Agent configuration for all healfmx repos.
+# Consumed by every repo that calls .github/workflows/pr-review-reusable.yml
+# from this repository. Keep this the single source of truth for review
+# behavior — do not fork per-repo copies of this file.
+#
+# Provider: Anthropic Claude, routed through PR-Agent's litellm integration.
+# Model choice and cost rationale are tracked outside this repo; short version:
+# Claude Sonnet 5 at effort "high" is the default sweet spot for code review
+# cost/quality, reserving Opus 5 for critical-path PRs only (see the
+# path-based override in [pr_reviewer.extra_instructions] below).
+
+[config]
+model = "anthropic/claude-sonnet-5"
+fallback_models = ["anthropic/claude-haiku-4-5"]
+
+# Trims the default 3-command bundle (/describe, /review, /improve) down to
+# just /review. Each command is a separate model call — /describe and
+# /improve add cost without adding review value for this use case. Add them
+# back individually if the team wants them later.
+pr_commands = ["/review"]
+
+# PR-Agent computes real per-run cost via litellm and can post it in the PR
+# comment. Use this instead of estimating — measure the pilot week, then
+# revisit model/effort choice with real numbers.
+output_run_cost = true
+
+[pr_reviewer]
+# NOTE: PR-Agent's litellm integration does not have a first-class
+# "effort"/"thinking" passthrough for Claude at the time this file was
+# written. If litellm's `extra_body` passthrough is available in the
+# installed PR-Agent version, this is where a request for
+# `output_config: {effort: "high"}` would go. Verify against the PR-Agent
+# version actually pinned in the reusable workflow before assuming this is
+# active — until confirmed, requests run at the model's default effort.
+extra_instructions = """
+Focus on correctness bugs, security issues (tenant isolation, PII exposure,
+injection), and reuse/simplification opportunities. Do not comment on
+formatting or style already enforced by CI linters.
+"""
+
+[github_action_config]
+auto_review = true
+auto_describe = false
+auto_improve = false
