@@ -9,26 +9,24 @@ repos.
 - `.pr_agent.toml` — the single source of truth for review behavior (model,
   commands run, cost tracking). Do not fork per-repo copies.
 - `.github/workflows/pr-review-reusable.yml` — the reusable workflow every
-  consuming repo calls. Handles AWS OIDC role assumption, Secrets Manager
-  lookup, and the PR-Agent action invocation.
+  consuming repo calls. Takes the Anthropic API key as a plain GitHub secret
+  and invokes PR-Agent.
 
-## One-time setup (AWS + GitHub, per account — not per repo)
+## One-time setup (per consuming repo)
 
 This account is an individual GitHub account, not an Organization, so there
-is no org-wide secrets store. Each consuming repo needs its own two repo
-secrets pointing at the *same* shared AWS resources below.
+is no org-wide secrets store — each consuming repo adds its own copy of the
+same key.
 
-1. **AWS Secrets Manager** — create one secret holding the Anthropic API key:
-   ```
-   Name:  healfmx/pr-review/anthropic-api-key
-   Value: {"ANTHROPIC_API_KEY": "sk-ant-..."}
-   ```
-2. **IAM role (OIDC)** — one role, trust policy scoped to
-   `repo:healfmx/*:*` (any healfmx repo, any branch), with a policy granting
-   `secretsmanager:GetSecretValue` on the ARN above only.
-3. **Per consuming repo**, add two repo secrets:
-   - `PR_REVIEW_OIDC_ROLE_ARN` — the role ARN from step 2.
-   - `PR_REVIEW_ANTHROPIC_SECRET_ARN` — the secret ARN from step 1.
+Add one repo secret:
+
+- `PR_REVIEW_ANTHROPIC_API_KEY` — the Anthropic API key, value as-is
+  (`sk-ant-...`).
+
+No AWS involved: this is a review-bot API key, not a production credential
+(DB passwords, encryption keys, etc.), so it doesn't warrant the
+Secrets-Manager-plus-OIDC pattern `healf-erp-backend` uses for those — a
+plain GitHub secret is the right amount of ceremony here.
 
 ## Adding PR review to a new repo
 
@@ -46,8 +44,7 @@ jobs:
   review:
     uses: healfmx/healfmx-pr-agent-settings/.github/workflows/pr-review-reusable.yml@main
     secrets:
-      OIDC_ROLE_ARN: ${{ secrets.PR_REVIEW_OIDC_ROLE_ARN }}
-      ANTHROPIC_SECRET_ARN: ${{ secrets.PR_REVIEW_ANTHROPIC_SECRET_ARN }}
+      ANTHROPIC_API_KEY: ${{ secrets.PR_REVIEW_ANTHROPIC_API_KEY }}
 ```
 
 ### Why `types: [opened]` only
