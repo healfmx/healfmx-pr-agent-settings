@@ -14,6 +14,12 @@
 # cost/quality, reserving Opus 5 for critical-path PRs only (see the
 # path-based override in [pr_reviewer.extra_instructions] below).
 
+#
+# `repo_context_files` is deliberately absent from this reference copy: the
+# list is per-repo, since each repo's AGENTS.md layout differs. Each
+# consuming repo declares its own, plus `repo_context_max_lines` sized to
+# it (the default cap is 500 total lines and truncates silently).
+
 [config]
 model = "anthropic/claude-sonnet-5"
 fallback_models = ["anthropic/claude-haiku-4-5"]
@@ -40,10 +46,40 @@ output_run_cost = true
 # `output_config: {effort: "high"}` would go. Verify against the PR-Agent
 # version actually pinned in the reusable workflow before assuming this is
 # active — until confirmed, requests run at the model's default effort.
+#
+# These instructions previously said "do not comment on formatting or style
+# already enforced by CI linters". That one line silently disabled a whole
+# rule: on a test PR whose file broke four of healf-erp-backend's
+# non-negotiables on purpose, the review caught the tenant, logging and
+# money violations and missed the Spanish identifiers — the only one of the
+# four with a pre-commit hook behind it. All four rules were equally present
+# in the loaded context, so this was never a context problem. Do not
+# reintroduce a blanket "CI already covers it" exclusion.
 extra_instructions = """
-Focus on correctness bugs, security issues (tenant isolation, PII exposure,
-injection), and reuse/simplification opportunities. Do not comment on
-formatting or style already enforced by CI linters.
+The repository's normative rules are the AGENTS.md files given to you as
+context. Review the diff against those rules and name the rule you are
+invoking — file and number — in every finding, so the author can check it
+rather than take your word for it.
+
+Report a rule violation even when a pre-commit hook or a CI job also catches
+it. This review runs when the PR is opened, before the author has read CI
+output, and several rules with hooks behind them are semantic rather than
+cosmetic: English-only identifiers and comments, monetary
+Decimal/ROUND_HALF_UP policy, and hand-edited generated artefacts among
+them.
+
+Do skip cosmetics that ruff and ruff-format rewrite on their own — line
+length, quote style, import order. That is noise, and it is the only
+category CI coverage is a reason to stay quiet about.
+
+Priorities, highest first: tenant isolation and cross-tenant reads; PII or
+credential exposure, including any value interpolated into a log message,
+an exception argument or a cache key; correctness bugs; then the remaining
+non-negotiables.
+
+docs/wiki/ is operational truth and wins on conflict, but it is not in your
+context. When a change looks like it contradicts or makes a documented
+standard stale, say so and name the page — do not guess what the page says.
 """
 
 [github_action_config]
