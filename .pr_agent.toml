@@ -39,6 +39,12 @@ pr_commands = ["/review", "/improve"]
 output_run_cost = true
 
 [pr_reviewer]
+# Default is 3 (docs.pr-agent.ai, verified). A real PR can have more than 3
+# genuine findings; the default silently drops the rest. Found smoke-testing
+# healf-erp-backend PR #282, where a file breaking 9 AGENTS.md rules only
+# surfaced 3 per section.
+num_max_findings = 10
+
 # NOTE: PR-Agent's litellm integration does not have a first-class
 # "effort"/"thinking" passthrough for Claude at the time this file was
 # written. If litellm's `extra_body` passthrough is available in the
