@@ -1,7 +1,12 @@
-# Centralized PR-Agent configuration for all healfmx repos.
-# Consumed by every repo that calls .github/workflows/pr-review-reusable.yml
-# from this repository. Keep this the single source of truth for review
-# behavior — do not fork per-repo copies of this file.
+# Reference copy of the PR-Agent config every healfmx repo should use.
+#
+# NOT fetched automatically. `config.config_file` as an env var does not
+# pull and merge a remote .pr_agent.toml — verified against a real run's
+# debug log (healf-erp-backend PR #277): the URL was stored as a literal
+# config value and PR-Agent ran with its built-in default model (gpt-5.6)
+# instead of anything below. Copy this file's contents into the consuming
+# repo's own root .pr_agent.toml (that mechanism is confirmed working) and
+# keep it in sync by hand when this file changes.
 #
 # Provider: Anthropic Claude, routed through PR-Agent's litellm integration.
 # Model choice and cost rationale are tracked outside this repo; short version:

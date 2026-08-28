@@ -6,11 +6,30 @@ repos.
 
 ## What lives here
 
-- `.pr_agent.toml` — the single source of truth for review behavior (model,
-  commands run, cost tracking). Do not fork per-repo copies.
+- `.pr_agent.toml` — **reference copy** of the review config (model, commands
+  run, cost tracking). Not fetched automatically by consuming repos — see
+  "Config is per-repo, not centralized" below. Copy its contents into each
+  consuming repo's own root `.pr_agent.toml` and keep them in sync by hand.
 - `.github/workflows/pr-review-reusable.yml` — the reusable workflow every
   consuming repo calls. Takes the Anthropic API key as a plain GitHub secret
-  and invokes PR-Agent.
+  and invokes PR-Agent. This part genuinely is shared/centralized and works
+  as a reusable workflow.
+
+## Config is per-repo, not centralized (important)
+
+The original design pointed PR-Agent at this repo's `.pr_agent.toml` via a
+`config.config_file` env var set to a `raw.githubusercontent.com` URL. **That
+does not work.** Verified against a real run's debug log
+(`healf-erp-backend` PR #277): the URL was stored as a literal config value,
+never fetched, and PR-Agent silently ran with its built-in default model
+(`gpt-5.6`, with a dummy OpenAI key) instead of anything in this repo's
+`.pr_agent.toml`.
+
+The only confirmed-working mechanism is a `.pr_agent.toml` at the
+**consuming repo's own root** (PR-Agent reads that natively). So each
+consuming repo needs the full config — not just repo-specific overrides —
+copied from this repo's `.pr_agent.toml`, plus its own `repo_context_files`
+list for its own AGENTS.md/CLAUDE.md layout.
 
 ## One-time setup (per consuming repo)
 
@@ -64,6 +83,13 @@ The reusable workflow skips branches matching `release/*` — those PRs
 package commits already reviewed individually against `develop`, so
 re-running the bundle against the release diff adds a full model call
 without new signal.
+
+## Known limitation
+
+Because config is per-repo (see above), a model/cost change here does not
+propagate automatically — it has to be copied into every consuming repo's
+`.pr_agent.toml` by hand. Revisit this if the number of consuming repos
+grows enough that the manual sync becomes the actual maintenance burden.
 
 ## Pilot / cost validation
 

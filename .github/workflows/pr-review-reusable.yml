@@ -32,14 +32,16 @@ jobs:
         # (`git ls-remote https://github.com/The-PR-Agent/pr-agent.git
         # refs/heads/main`) rather than the floating branch, so an upstream
         # push can't change what runs here without a deliberate bump.
-        # TODO: verify `config.config_file` is the correct current env var
-        # for pointing PR-Agent at a remote .pr_agent.toml against the
-        # PR-Agent version pinned below — confirm against docs.pr-agent.ai
-        # before relying on this in production.
+        #
+        # Model/commands/cost-tracking config is NOT centralized here.
+        # `config.config_file` as an env var does not fetch and merge a
+        # remote .pr_agent.toml — verified against a real run's debug log
+        # (healf-erp-backend PR #277): the URL was stored as a literal
+        # config value and PR-Agent ran with its built-in default model
+        # instead. Each consuming repo carries its own full .pr_agent.toml
+        # at its root (the one confirmed-working config mechanism); see
+        # .pr_agent.toml in this repo for the reference copy.
         uses: The-PR-Agent/pr-agent@c27c0ef4a79218ffb4f3fbe6b8934f19fa4fdcf0 # main, 2026-08-28
         env:
           GITHUB_TOKEN: ${{ github.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # PR-Agent reads .pr_agent.toml from the *calling* repo's root by
-          # default; the config lives here instead, so point at it directly.
-          config.config_file: "https://raw.githubusercontent.com/healfmx/healfmx-pr-agent-settings/main/.pr_agent.toml"
