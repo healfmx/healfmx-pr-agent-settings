@@ -28,14 +28,15 @@ jobs:
       issues: write
     steps:
       - name: PR-Agent review
-        # TODO: pin to a full commit SHA before relying on this in
-        # production (this session could not reach the GitHub API to
-        # verify the current release SHA).
+        # Pinned to The-PR-Agent/pr-agent's main HEAD as of 2026-08-28
+        # (`git ls-remote https://github.com/The-PR-Agent/pr-agent.git
+        # refs/heads/main`) rather than the floating branch, so an upstream
+        # push can't change what runs here without a deliberate bump.
         # TODO: verify `config.config_file` is the correct current env var
         # for pointing PR-Agent at a remote .pr_agent.toml against the
-        # PR-Agent version actually pinned above — confirm against
-        # docs.pr-agent.ai before relying on this in production.
-        uses: The-PR-Agent/pr-agent@main
+        # PR-Agent version pinned below — confirm against docs.pr-agent.ai
+        # before relying on this in production.
+        uses: The-PR-Agent/pr-agent@c27c0ef4a79218ffb4f3fbe6b8934f19fa4fdcf0 # main, 2026-08-28
         env:
           GITHUB_TOKEN: ${{ github.token }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
